@@ -1,0 +1,134 @@
+version: "3.9"
+
+services:
+  # ---------- TiDB cluster ----------
+  pd:
+    image: pingcap/pd:latest
+    command:
+      - --name=pd
+      - --data-dir=/data/pd
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd:2379
+      - --advertise-peer-urls=http://pd:2380
+    ports:
+      - "2379:2379"          # PD client port
+    volumes:
+      - pd_data:/data
+    restart: always
+
+  tikv:
+    image: pingcap/tikv:latest
+    command:
+      - --pd=pd:2379         # connect to PD client port
+      - --data-dir=/data/tikv
+    depends_on:
+      - pd
+    volumes:
+      - tikv_data:/data
+    restart: always
+
+  tidb:
+    image: pingcap/tidb:latest
+    command:
+      - --store=tikv
+      - --path=pd:2379       # connect to PD client port
+    depends_on:
+      - pd
+      - tikv
+    ports:
+      - "4000:4000"          # SQL
+      - "11080:10080"        # status
+    restart: always
+
+  # ---------- DB init (runs once per clean volumes) ----------
+  initdb:
+    image: mysql:8
+    depends_on:
+      - tidb
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db/init-db.sh:/init-db.sh
+    entrypoint: ["sh", "/init-db.sh"]
+
+  # ---------- TiCDC ----------
+  ticdc:
+    image: pingcap/ticdc:latest
+    entrypoint: ["/cdc"]
+    command:
+      - server
+      - --pd=pd:2379
+      - --addr=0.0.0.0:8300
+      - --advertise-addr=ticdc:8300
+    depends_on:
+      - pd
+      - tidb
+    ports:
+      - "8400:8300"
+    restart: always
+
+  # ---------- Kafka + Zookeeper ----------
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "22181:2181"
+    restart: always
+
+  kafka:
+    image: bitnami/kafka:3.7
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    ports:
+      - "9192:9092"         # host:container (optional host expose)
+    restart: always
+
+  # ---------- Backend API ----------
+  server:
+    build: ./server
+    env_file:
+      - .env                 # or inline environment:
+      # environment:
+      #   - DB_HOST=tidb
+      #   - DB_PORT=4000
+      #   - DB_USER=root
+      #   - DB_PASSWORD=
+      #   - DB_NAME=sre_login
+      #   - JWT_SECRET=goodluckforme
+      #   - PORT=3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - tidb
+    restart: always
+
+  # ---------- Kafka Consumer ----------
+  consumer:
+    build: ./consumer
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC=cdc-events
+    depends_on:
+      - kafka
+    restart: always
+    # (no port needed; it's a background worker)
+
+  # # ---------- Frontend (optional) ----------
+  # client:
+  #   build: ./client
+  #   ports:
+  #     - "8088:80"
+  #   depends_on:
+  #     - server
+  #   restart: always
+
+volumes:
+  pd_data:
+  tikv_data:
