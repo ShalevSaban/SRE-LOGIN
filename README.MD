@@ -28,7 +28,7 @@ This project demonstrates a full-stack system with **authentication, database in
 ├── server/                        # Backend API service
 │   ├── Dockerfile
 │   ├── package.json
-│   ├── app.js                     # Express app with routes
+│   ├── app.js                     # Express routes (/login, /profile)
 │   ├── auth.js                    # JWT handling
 │   └── db.js                      # TiDB connection
 │
