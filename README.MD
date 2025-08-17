@@ -43,7 +43,7 @@ This project demonstrates a full-stack system with **authentication, database in
     ├── Dockerfile
     ├── index.html                 # Simple login page
     └── nginx.conf                 # Nginx config
-
+```
 
 
 ## ▶️ Run the System
