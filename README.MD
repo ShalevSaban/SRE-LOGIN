@@ -18,14 +18,16 @@ This project demonstrates a full-stack system with **authentication, database in
   - Logs DB change events in JSON.
 
 ## 📂 Project Structure
+
+```text
 .
 ├── docker-compose.yml             # Orchestration for all services
 │
-├── db/
+├── db/                            # Database initialization
 │   ├── init.sql                   # Schema + default user
 │   └── init-db.sh                 # Applies schema on startup
 │
-├── server/                        # Backend API service
+├── server/                        # Backend API service (Node.js + Express)
 │   ├── Dockerfile
 │   ├── package.json
 │   ├── app.js                     # Express routes (/login, /profile)
@@ -37,10 +39,12 @@ This project demonstrates a full-stack system with **authentication, database in
 │   ├── package.json
 │   └── index.js                   # Subscribes to Kafka + logs events
 │
-└── client/                        # Frontend
+└── client/                        # Frontend (Nginx + HTML)
     ├── Dockerfile
     ├── index.html                 # Simple login page
     └── nginx.conf                 # Nginx config
+
+
 
 ## ▶️ Run the System
 From the project root:
