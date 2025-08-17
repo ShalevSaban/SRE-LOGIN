@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Login</title>
+</head>
+
+<body>
+    <h2>Login</h2>
+    <form id="login-form">
+        <input type="email" id="email" placeholder="Email" required><br>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+    </form>
+    <pre id="response"></pre>
+    <script>
+        const form = document.getElementById('login-form');
+        const responseBox = document.getElementById('response');
+
+        form.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            try {
+                // 1) Login (proxied through Nginx to backend)
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password
+                    })
+                });
+
+                const data = await res.json();
+                responseBox.textContent = JSON.stringify(data, null, 2);
+
+                if (!res.ok) return; // stop if login failed
+
+                const token = data.token;
+                if (!token) return;
+
+                // 2) Fetch profile with Bearer header
+                const profileRes = await fetch('/api/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const profileData = await profileRes.json();
+                responseBox.textContent += '\nProfile:\n' + JSON.stringify(profileData, null, 2);
+            } catch (err) {
+                responseBox.textContent = 'Error: ' + (String(err));
+            }
+        });
+    </script>
+
+</body>
+
+</html>

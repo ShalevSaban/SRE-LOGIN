@@ -20,7 +20,9 @@ services:
   tikv:
     image: pingcap/tikv:latest
     command:
-      - --pd=pd:2379         # connect to PD client port
+      - --pd=pd:2379                 # connect to PD client port
+      - --addr=0.0.0.0:20160         # listen inside container
+      - --advertise-addr=tikv:20160  # advertise reachable DNS name on compose network
       - --data-dir=/data/tikv
     depends_on:
       - pd
@@ -32,13 +34,14 @@ services:
     image: pingcap/tidb:latest
     command:
       - --store=tikv
-      - --path=pd:2379       # connect to PD client port
+      - --path=pd:2379               # connect to PD client port
+      - --advertise-address=tidb     # so others in the network reach it as 'tidb'
     depends_on:
       - pd
       - tikv
     ports:
-      - "4000:4000"          # SQL
-      - "11080:10080"        # status
+      - "4000:4000"                  # SQL
+      - "11080:10080"                # status
     restart: always
 
   # ---------- DB init (runs once per clean volumes) ----------
@@ -120,14 +123,36 @@ services:
     restart: always
     # (no port needed; it's a background worker)
 
-  # # ---------- Frontend (optional) ----------
-  # client:
-  #   build: ./client
-  #   ports:
-  #     - "8088:80"
-  #   depends_on:
-  #     - server
-  #   restart: always
+  # ---------- One-shot CDC feed creation ----------
+  cdc-init:
+    image: pingcap/ticdc:latest
+    depends_on:
+      - pd
+      - tidb
+      - ticdc
+      - kafka
+    entrypoint: ["/bin/sh","-c"]
+    command: |
+      echo "Waiting for TiCDC..."
+      until /cdc cli capture list --pd=http://pd:2379 >/dev/null 2>&1; do
+        sleep 2
+      done
+      echo "Creating (or ensuring) changefeed..."
+      /cdc cli changefeed create \
+        --pd=http://pd:2379 \
+        --sink-uri="kafka://kafka:9092/cdc-events?protocol=canal-json" \
+        --changefeed-id="kafka" || true
+      echo "CDC ready."
+    restart: "no"
+
+
+  client:
+    build: ./client
+    ports:
+      - "8088:80"
+    depends_on:
+      - server
+    restart: always
 
 volumes:
   pd_data:

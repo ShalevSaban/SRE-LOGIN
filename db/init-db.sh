@@ -7,6 +7,6 @@ until mysql -h tidb -P 4000 -u root -e "SELECT 1" >/dev/null 2>&1; do
 done
 echo "[init-db] TiDB is up, applying schema..."
 
-mysql -h tidb -P 4000 -u root < /docker-entrypoint-initdb.d/db.sql
+mysql -h tidb -P 4000 -u root < /docker-entrypoint-initdb.d/init.sql
 
 echo "[init-db] done."
