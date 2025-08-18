@@ -24,6 +24,7 @@
             const password = document.getElementById('password').value.trim();
 
             try {
+                // login ----
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: {
@@ -36,7 +37,21 @@
                 });
 
                 const data = await res.json();
-                responseBox.textContent = JSON.stringify(data, null, 2);
+                responseBox.textContent = "Login response:\n" + JSON.stringify(data, null, 2);
+
+                if (data.token) {
+                    const profileRes = await fetch('/api/profile', {
+                        headers: {
+                            'Authorization': 'Bearer ' + data.token
+                        }
+                    });
+                    const profileData = await profileRes.json();
+
+                    responseBox.textContent += "\n\nProfile response:\n" +
+                        JSON.stringify(profileData, null, 2);
+                } else {
+                    responseBox.textContent += "\n\n⚠️ No token returned from login";
+                }
             } catch (err) {
                 responseBox.textContent = 'Error: ' + String(err);
             }

@@ -42,6 +42,11 @@ services:
     ports:
       - "4000:4000"                  # SQL
       - "11080:10080"                # status
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:10080/status"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
     restart: always
 
   # ---------- DB init (runs once per clean volumes) ----------
@@ -60,14 +65,17 @@ services:
     entrypoint: ["/cdc"]
     command:
       - server
-      - --pd=pd:2379
+      - --pd=http://pd:2379
       - --addr=0.0.0.0:8300
       - --advertise-addr=ticdc:8300
+      - --data-dir=/data
     depends_on:
       - pd
       - tidb
     ports:
       - "8400:8300"
+    volumes:
+      - ticdc_data:/data
     restart: always
 
   # ---------- Kafka + Zookeeper ----------
@@ -97,19 +105,12 @@ services:
   server:
     build: ./server
     env_file:
-      - .env                 # or inline environment:
-      # environment:
-      #   - DB_HOST=tidb
-      #   - DB_PORT=4000
-      #   - DB_USER=root
-      #   - DB_PASSWORD=
-      #   - DB_NAME=sre_login
-      #   - JWT_SECRET=goodluckforme
-      #   - PORT=3000
+      - .env
     ports:
       - "3000:3000"
     depends_on:
-      - tidb
+      tidb:
+        condition: service_healthy
     restart: always
 
   # ---------- Kafka Consumer ----------
@@ -133,19 +134,27 @@ services:
       - kafka
     entrypoint: ["/bin/sh","-c"]
     command: |
-      echo "Waiting for TiCDC..."
+      set -e
+      echo "[cdc-init] Waiting for TiCDC capture..."
       until /cdc cli capture list --pd=http://pd:2379 >/dev/null 2>&1; do
         sleep 2
       done
-      echo "Creating (or ensuring) changefeed..."
-      /cdc cli changefeed create \
-        --pd=http://pd:2379 \
-        --sink-uri="kafka://kafka:9092/cdc-events?protocol=canal-json" \
-        --changefeed-id="kafka" || true
-      echo "CDC ready."
+
+      echo "[cdc-init] Ensuring changefeed 'kafka' exists and is running..."
+      if /cdc cli changefeed query --pd=http://pd:2379 --changefeed-id=kafka >/dev/null 2>&1; then
+        echo "[cdc-init] changefeed exists. Trying to resume (in case it's paused)..."
+        /cdc cli changefeed resume --pd=http://pd:2379 --changefeed-id=kafka || true
+      else
+        echo "[cdc-init] changefeed not found. Creating..."
+        /cdc cli changefeed create \
+          --pd=http://pd:2379 \
+          --sink-uri="kafka://kafka:9092/cdc-events?protocol=canal-json&partition-num=1" \
+          --changefeed-id=kafka
+      fi
+      echo "[cdc-init] Done."
     restart: "no"
 
-
+  # ---------- Client (Nginx) ----------
   client:
     build: ./client
     ports:
@@ -157,3 +166,4 @@ services:
 volumes:
   pd_data:
   tikv_data:
+  ticdc_data:
