@@ -124,35 +124,7 @@ services:
     restart: always
     # (no port needed; it's a background worker)
 
-  # ---------- One-shot CDC feed creation ----------
-  cdc-init:
-    image: pingcap/ticdc:latest
-    depends_on:
-      - pd
-      - tidb
-      - ticdc
-      - kafka
-    entrypoint: ["/bin/sh","-c"]
-    command: |
-      set -e
-      echo "[cdc-init] Waiting for TiCDC capture..."
-      until /cdc cli capture list --pd=http://pd:2379 >/dev/null 2>&1; do
-        sleep 2
-      done
 
-      echo "[cdc-init] Ensuring changefeed 'kafka' exists and is running..."
-      if /cdc cli changefeed query --pd=http://pd:2379 --changefeed-id=kafka >/dev/null 2>&1; then
-        echo "[cdc-init] changefeed exists. Trying to resume (in case it's paused)..."
-        /cdc cli changefeed resume --pd=http://pd:2379 --changefeed-id=kafka || true
-      else
-        echo "[cdc-init] changefeed not found. Creating..."
-        /cdc cli changefeed create \
-          --pd=http://pd:2379 \
-          --sink-uri="kafka://kafka:9092/cdc-events?protocol=canal-json&partition-num=1" \
-          --changefeed-id=kafka
-      fi
-      echo "[cdc-init] Done."
-    restart: "no"
 
   # ---------- Client (Nginx) ----------
   client:

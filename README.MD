@@ -1,6 +1,6 @@
 # SRE Home Test – Mini System
 
-This project demonstrates a full-stack system with **authentication, database integration, CDC streaming, and Kafka consumer**, all orchestrated with Docker Compose.
+This project demonstrates a full-stack system with **authentication, database integration, CDC streaming, and Kafka consumer**
 
 ## ✅ Mission Requirements Met
 - **Frontend (HTML + Nginx):** Simple login page (email/password).
@@ -49,7 +49,7 @@ This project demonstrates a full-stack system with **authentication, database in
 ## ▶️ Run the System
 From the project root:
 
-docker-compose up --build
+with git bash : sh init.sh
 
 This command **builds and starts everything**:
 - TiDB (with PD/TiKV)
@@ -59,7 +59,39 @@ This command **builds and starts everything**:
 - Consumer
 - Client (Nginx + login page)
 
-By default, logs for all services will appear in your terminal.
+if everything is ok :
+
+```text
+[INIT] Bringing up all services...
+[INIT] Waiting for PD to be healthy...
+[INIT] PD is healthy.
+[INIT] Waiting for TiDB to be healthy...
+[INIT] TiDB is healthy.
+[INIT] Waiting for TiCDC capture...
+[INIT] TiCDC is ready.
+[INIT] Ensuring Kafka topic 'cdc-events' exists...
+[INIT] Ensuring TiCDC changefeed 'kafka' exists...
+[INIT] creating changefeed...
+Create changefeed successfully!
+[INIT] Current changefeeds:
+[
+  {
+    "id": "kafka",
+    "namespace": "default",
+    "summary": {
+      "state": "normal",
+      "error": null
+    }
+  }
+]
+[INIT] System ready!
+  - API:      http://localhost:3000/health
+  - Frontend: http://localhost:8088
+  - Metrics:  http://localhost:3000/metrics , http://localhost:4001/metrics
+
+  ```
+
+
 
 ## 🌐 Access
 - **Client (login page):** http://localhost:8080
