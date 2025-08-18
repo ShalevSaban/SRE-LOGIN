@@ -68,3 +68,7 @@ By default, logs for all services will appear in your terminal.
 - **TiDB SQL:** available at `localhost:4000`
 
 ✅ With a single command, the system comes up ready with **DB + CDC + Kafka + API + Consumer + Client**.
+
+**username and password to check**:
+- username: shalev@gmail.com
+- passoword: 123
