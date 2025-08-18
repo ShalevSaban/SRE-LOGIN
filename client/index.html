@@ -47,7 +47,7 @@
                     });
                     const profileData = await profileRes.json();
 
-                    responseBox.textContent += "\n\nProfile response:\n" +
+                    responseBox.textContent += "\n\nlogin details:\n" +
                         JSON.stringify(profileData, null, 2);
                 } else {
                     responseBox.textContent += "\n\n⚠️ No token returned from login";

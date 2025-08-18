@@ -1,12 +1,15 @@
+// server/auth.js
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'goodluckforme';
-const JWT_TTL_SEC = Number(process.env.JWT_TTL_SEC || 3600);
+
 
 function generateToken(user) {
-    // minimal payload
-    return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_TTL_SEC });
+    return jwt.sign({ id: user.id, email: user.email },
+        JWT_SECRET, { expiresIn: '1h' }
+    );
 }
+
 
 function verifyToken(token) {
     try {
