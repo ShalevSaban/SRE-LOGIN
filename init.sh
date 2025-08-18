@@ -80,6 +80,3 @@ echo "[INIT] Current changefeeds:"
 MSYS_NO_PATHCONV=1 docker compose exec -T ticdc /cdc cli changefeed list --pd=http://pd:2379 || true
 
 echo "[INIT] System ready!"
-echo "  - API:      http://localhost:3000/health"
-echo "  - Frontend: http://localhost:8088"
-echo "  - Metrics:  http://localhost:3000/metrics , http://localhost:4001/metrics"

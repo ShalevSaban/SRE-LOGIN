@@ -85,9 +85,7 @@ Create changefeed successfully!
   }
 ]
 [INIT] System ready!
-  - API:      http://localhost:3000/health
-  - Frontend: http://localhost:8088
-  - Metrics:  http://localhost:3000/metrics , http://localhost:4001/metrics
+
 
   ```
 
