@@ -6,25 +6,111 @@
 </head>
 
 <body>
-    <h2>Login</h2>
-    <form id="login-form">
-        <input type="email" id="email" placeholder="Email" required><br>
-        <input type="password" id="password" placeholder="Password" required><br>
-        <button type="submit">Login</button>
-    </form>
+    <!-- Login Section -->
+    <div id="login-section">
+        <h2>Login</h2>
+        <form id="login-form">
+            <input type="email" id="email" placeholder="Email" required><br>
+            <input type="password" id="password" placeholder="Password" required><br>
+            <button type="submit">Login</button>
+        </form>
+        <p><a href="#" id="show-register">Don't have an account? Register</a></p>
+    </div>
+
+    <!-- Registration Section -->
+    <div id="register-section" style="display:none;">
+        <h2>Register</h2>
+        <form id="register-form">
+            <input type="email" id="reg-email" placeholder="Email" required><br>
+            <input type="password" id="reg-password" placeholder="Password" required><br>
+            <button type="submit">Register</button>
+        </form>
+        <p><a href="#" id="show-login">Already have an account? Login</a></p>
+    </div>
+
+    <!-- Logged In Section -->
+    <div id="logged-in-section" style="display:none;">
+        <h2>Welcome!</h2>
+        <div id="user-info"></div>
+        <button id="logout-btn">Logout</button>
+    </div>
+
     <pre id="response"></pre>
 
     <script>
-        const form = document.getElementById('login-form');
         const responseBox = document.getElementById('response');
+        let currentToken = null;
 
-        form.addEventListener('submit', async(e) => {
+        // Toggle functions
+        document.getElementById('show-register').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('register-section').style.display = 'block';
+            responseBox.textContent = '';
+        });
+
+        document.getElementById('show-login').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('register-section').style.display = 'none';
+            document.getElementById('login-section').style.display = 'block';
+            responseBox.textContent = '';
+        });
+
+        // State functions
+        function showLoggedInState(userInfo) {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('register-section').style.display = 'none';
+            document.getElementById('logged-in-section').style.display = 'block';
+            document.getElementById('user-info').innerHTML = `Email: ${userInfo.email}<br>ID: ${userInfo.id}`;
+        }
+
+        function showLoginState() {
+            document.getElementById('logged-in-section').style.display = 'none';
+            document.getElementById('login-section').style.display = 'block';
+            currentToken = null;
+            document.getElementById('login-form').reset();
+        }
+
+        // Registration
+        document.getElementById('register-form').addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password
+                    })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    responseBox.textContent = "Registration successful!";
+                    document.getElementById('register-section').style.display = 'none';
+                    document.getElementById('login-section').style.display = 'block';
+                    document.getElementById('register-form').reset();
+                } else {
+                    responseBox.textContent = "Registration failed:\n" + JSON.stringify(data, null, 2);
+                }
+            } catch (err) {
+                responseBox.textContent = 'Registration error: ' + err.message;
+            }
+        });
+
+        // Login
+        document.getElementById('login-form').addEventListener('submit', async(e) => {
             e.preventDefault();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
 
             try {
-                // login ----
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: {
@@ -37,9 +123,10 @@
                 });
 
                 const data = await res.json();
-                responseBox.textContent = "Login response:\n" + JSON.stringify(data, null, 2);
 
                 if (data.token) {
+                    currentToken = data.token;
+
                     const profileRes = await fetch('/api/profile', {
                         headers: {
                             'Authorization': 'Bearer ' + data.token
@@ -47,13 +134,42 @@
                     });
                     const profileData = await profileRes.json();
 
-                    responseBox.textContent += "\n\nlogin details:\n" +
-                        JSON.stringify(profileData, null, 2);
+                    responseBox.textContent = "Login successful!";
+                    showLoggedInState(profileData);
                 } else {
-                    responseBox.textContent += "\n\n⚠️ No token returned from login";
+                    responseBox.textContent = "Login failed:\n" + JSON.stringify(data, null, 2);
                 }
             } catch (err) {
-                responseBox.textContent = 'Error: ' + String(err);
+                responseBox.textContent = 'Login error: ' + err.message;
+            }
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async() => {
+            if (!currentToken) {
+                responseBox.textContent = 'No token to logout with';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + currentToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    responseBox.textContent = "Logout successful!";
+                    showLoginState();
+                } else {
+                    responseBox.textContent = "Logout failed:\n" + JSON.stringify(data, null, 2);
+                }
+            } catch (err) {
+                responseBox.textContent = 'Logout error: ' + err.message;
             }
         });
     </script>

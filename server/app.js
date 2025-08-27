@@ -40,6 +40,20 @@ app.post('/login', async(req, res) => {
     }
 });
 
+
+app.post('/register', async(req, res) => {
+    console.log('Register attempt:', req.body); // DEBUG
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Missing credentials' });
+
+    try {
+        await pool.query('INSERT INTO users (email,password) VALUES(?,?)', [email, password]);
+        res.json({ message: 'User created successfully' });
+    } catch (err) {
+        res.status(400).json({ error: 'User already exists' })
+    }
+});
+
 // /profile
 app.get('/profile', async(req, res) => {
     const raw = req.headers['authorization'] || '';
@@ -55,6 +69,23 @@ app.get('/profile', async(req, res) => {
         res.json(rows[0]);
     } catch (err) {
         console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+app.post('/logout', async(req, res) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader ? authHeader.slice(7) : null;
+    try {
+        await pool.query('DELETE FROM tokens WHERE token = ?', [token]);
+        logger.info(JSON.stringify({
+            timestamp: new Date(),
+            action: 'logout',
+            token: token.substring(0, 10) + '...'
+        }));
+        res.json({ message: 'Logged out successfully' });
+    } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
 });
